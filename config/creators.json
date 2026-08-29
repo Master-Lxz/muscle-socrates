@@ -1,15 +1,26 @@
 {
+  "setup_done": false,
   "preferred": [
     {
       "name": "凯圣王",
-      "platforms": ["bilibili", "douyin"],
-      "uid": {"bilibili": 2100737396},
+      "platforms": [
+        "bilibili",
+        "douyin"
+      ],
+      "uid": {
+        "bilibili": 2100737396
+      },
       "note": "循证训练科普方向。bilibili uid 已由 view 接口实测回填（BV1iQ4y1e7YL）。"
     },
     {
       "name": "谭成义",
-      "platforms": ["bilibili", "douyin"],
-      "uid": null,
+      "platforms": [
+        "bilibili",
+        "douyin"
+      ],
+      "uid": {
+        "bilibili": 521903482
+      },
       "note": "同上。"
     }
   ],

@@ -13,6 +13,20 @@ description: 肌格拉底：循证健身知识问答 + 训练动作教学视频�
 
 技能根目录 = 本文件所在目录。脚本在 `scripts/`，凭证在 `credentials/`（git 忽略，勿外发）。
 
+## 首次使用必做：白名单确认
+
+新装技能第一次被触发时，`status` 会显示 `whitelist.setup_done: false`。此时**必须先问用户**：
+
+> "技能自带 UP 主白名单（当前：凯圣王、谭成义）。你想优先看哪些 UP 主？可以保留、增删或换人。"
+
+按用户答复执行（均为一行命令）：
+
+- 增/删：`python "$S" whitelist add <名字>...` / `remove <名字>...`
+- 有 UP 主页链接时回填 uid：`python "$S" whitelist uid <名字> bilibili:<uid>`
+- 确认完成（用户说"就这样/不用改"也算完成）：`python "$S" whitelist done`
+
+完成后该问题不再出现；之后用户随时可以说"我想优先看 XX"重新调整。
+
 ## 第零步：路由
 
 | 用户输入特征 | 走哪条线 | 先读哪个文件 |
@@ -58,6 +72,7 @@ python "$S" bili-login                                          # ④ B站扫码
 python "$S" bili-search "深蹲 教学" --author 凯圣王 --limit 20    # ⑤ B站搜索（白名单UP自动置顶；--author 定向检索某个UP）
 python "$S" bili-fetch BV1xxx BV2yyy                            # ⑥ 抓素材包（可多个BV；默认落盘 .cache/ 只回摘要，--out - 才打印全文）
 python "$S" douyin check                                        # ⑦ 抖音登录态；to-playwright OUT / from-playwright SRC 同理
+python "$S" whitelist show                                      # ⑧ 白名单管理：add/remove/uid/done（首次必问，见上节）
 ```
 
 各子功能也保留独立脚本（`scripts/` 下同名 `.py`，可单独运行），但一律推荐统一入口。

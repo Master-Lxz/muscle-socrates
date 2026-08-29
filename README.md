@@ -27,6 +27,9 @@ git clone https://github.com/Master-Lxz/muscle-socrates.git ~/.agents/skills/mus
 
 > 国内网络访问 GitHub 需自行解决加速（FastGithub、代理等）；装好后更新只需在技能目录里 `git pull`，或 `npx skills update`。
 
+装好后**第一次使用，AI 会先问你的 UP 主白名单偏好**（默认：凯圣王、谭成义，可自由增删换人），
+确认一次终身有效，之后随时可以说"我想优先看 XX"重新调整。
+
 脚本为 Python 标准库为主（3.10+）：B站登录时自动补装纯 Python 包 `qrcode`（终端出二维码）；
 弹幕解压已兼容B站当前的"裸 deflate"格式，如遇 brotli 节点按脚本提示 `pip install brotli`（可选）。
 

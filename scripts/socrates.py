@@ -48,6 +48,13 @@ def cmd_status(_args) -> int:
     import douyin_cookies
     report["douyin"] = douyin_cookies.cmd_check()
 
+    try:
+        wl = json.loads((ROOT / "config" / "creators.json").read_text("utf-8"))
+        report["whitelist"] = {"setup_done": bool(wl.get("setup_done")),
+                               "preferred": [p.get("name") for p in wl.get("preferred", [])]}
+    except Exception as e:  # noqa: BLE001
+        report["whitelist"] = {"setup_done": False, "preferred": [], "error": str(e)[:100]}
+
     deps = {}
     for m in ("qrcode", "brotli"):
         try:
@@ -86,6 +93,9 @@ def cmd_status(_args) -> int:
         report["europepmc"] = {"ok": False, "error": str(e)[:120]}
 
     hints = []
+    if not report["whitelist"]["setup_done"]:
+        hints.append("首次使用未完成：先问用户想优先看哪些UP主（当前 preferred 见 whitelist 字段），"
+                     "用 whitelist add/remove 落实后跑 whitelist done，此后不再询问")
     if not report["bilibili"]["logged_in"]:
         hints.append("B站未登录：跑 bili-login 扫码（AI字幕需要；搜索/弹幕/评论不受影响）")
     if not report["douyin"].get("valid"):
@@ -178,6 +188,64 @@ def cmd_douyin(args) -> int:
     return 0
 
 
+def _creators_path() -> pathlib.Path:
+    return ROOT / "config" / "creators.json"
+
+
+def cmd_whitelist(args) -> int:
+    """白名单管理：首次使用时 AI 用它落实用户的偏好，用户之后也随时可改。"""
+    cfg = json.loads(_creators_path().read_text("utf-8"))
+    sub = args.wl_cmd
+
+    if sub == "show":
+        print(json.dumps(cfg, ensure_ascii=False, indent=2))
+        return 0
+
+    if sub in ("add", "remove"):
+        preferred = cfg.setdefault("preferred", [])
+        if sub == "add":
+            names = {p.get("name") for p in preferred}
+            for name in args.names:
+                if name not in names:
+                    preferred.append({"name": name, "platforms": ["bilibili", "douyin"],
+                                      "uid": None, "note": ""})
+            cfg["pending"] = [x for x in cfg.get("pending", [])
+                              if (x if isinstance(x, str) else x.get("name")) not in args.names]
+        else:
+            cfg["preferred"] = [p for p in preferred if p.get("name") not in args.names]
+        _save = _creators_path()
+        _save.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", "utf-8")
+        print(json.dumps({"code": 0, "action": sub, "names": args.names,
+                          "preferred": [p.get("name") for p in cfg["preferred"]]},
+                         ensure_ascii=False))
+        return 0
+
+    if sub == "uid":
+        platform, _, uid = args.value.partition(":")
+        for p in cfg.get("preferred", []):
+            if p.get("name") == args.name:
+                uids = p.get("uid") or {}
+                uids[platform] = int(uid)
+                p["uid"] = uids
+                _creators_path().write_text(
+                    json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", "utf-8")
+                print(json.dumps({"code": 0, "name": args.name, "uid": p["uid"]},
+                                 ensure_ascii=False))
+                return 0
+        print(json.dumps({"code": -1, "message": f"白名单里没有 {args.name}，先 whitelist add"}))
+        return 1
+
+    if sub == "done":
+        cfg["setup_done"] = True
+        _creators_path().write_text(
+            json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", "utf-8")
+        print(json.dumps({"code": 0, "setup_done": True,
+                          "preferred": [p.get("name") for p in cfg.get("preferred", [])]},
+                         ensure_ascii=False))
+        return 0
+    return 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         prog="socrates.py", description="肌格拉底 —— 循证健身技能统一命令行")
@@ -215,11 +283,21 @@ def main() -> int:
                             "from-playwright", "from-netscape"])
     p.add_argument("path", nargs="?", default=None)
 
+    p = sub.add_parser("whitelist", help="UP主白名单管理（首次使用必做）")
+    wsub = p.add_subparsers(dest="wl_cmd", required=True)
+    wsub.add_parser("show", help="查看当前白名单配置")
+    p = wsub.add_parser("add", help="加入白名单"); p.add_argument("names", nargs="+")
+    p = wsub.add_parser("remove", help="移出白名单"); p.add_argument("names", nargs="+")
+    p = wsub.add_parser("uid", help="回填某UP的平台uid")
+    p.add_argument("name"); p.add_argument("value", help="平台:uid，如 bilibili:2100737396")
+    wsub.add_parser("done", help="标记首次白名单引导已完成")
+
     args = ap.parse_args()
     handler = {
         "status": cmd_status, "paper": cmd_paper, "verify": cmd_verify,
         "bili-login": cmd_bili_login, "bili-search": cmd_bili_search,
         "bili-fetch": cmd_bili_fetch, "douyin": cmd_douyin,
+        "whitelist": cmd_whitelist,
     }[args.cmd]
     return handler(args)
 
