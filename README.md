@@ -1,6 +1,8 @@
-# fitness-wiki 健身百科
+# muscle-socrates 肌格拉底
 
-ZCode 技能：**循证健身知识问答**（仿 [grounded](https://github.com/jostelzer/grounded)：检索真实文献、逐条验证引用，零凭记忆编造）+ **训练动作教学视频归纳**（B站 API + 抖音浏览器，汇总国内博主教学，附跳转链接）。两条管线互相校验，结果沉淀为本地 wiki 条目，越用越厚。
+> 未经检索的结论不值得信。
+
+ZCode 技能：**循证健身知识问答**（仿 [grounded](https://github.com/jostelzer/grounded)：检索真实文献、逐条验证引用，零凭记忆编造）+ **训练动作教学视频归纳**（B站 API + 抖音浏览器，汇总国内博主教学，附跳转链接）。两条管线互相校验，结果沉淀为本地 wiki 条目，越用越厚。名字取自"苏格拉底"——什么都先问一句：研究怎么说？
 
 ## 功能
 
@@ -13,8 +15,8 @@ ZCode 技能：**循证健身知识问答**（仿 [grounded](https://github.com/
 把本仓库克隆到 agent 的技能目录即可：
 
 ```bash
-git clone https://github.com/Master-Lxz/fitness-wiki.git ~/.agents/skills/fitness-wiki
-# ZCode 也支持 ~/.zcode/skills/fitness-wiki
+git clone https://github.com/Master-Lxz/muscle-socrates.git ~/.agents/skills/muscle-socrates
+# ZCode 也支持 ~/.zcode/skills/muscle-socrates
 ```
 
 脚本为 Python 标准库为主（3.10+）：B站登录时自动补装纯 Python 包 `qrcode`（终端出二维码）；
