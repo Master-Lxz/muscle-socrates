@@ -28,7 +28,7 @@ description: 肌格拉底：循证健身知识问答 + 训练动作教学视频�
 ## 铁律（两条管线共用）
 
 1. **零记忆引用**：每条文献引用必须来自本次实时检索结果，禁止凭记忆写 DOI/标题/作者。
-2. **先读后引**：至少读过摘要才能引用；引用前必须跑 `scripts/verify_citations.py`，
+2. **先读后引**：至少读过摘要才能引用；引用前必须跑 `socrates.py verify`，
    返回 exit 2（找不到或撤稿）→ 中断修复，不许带病输出。
 3. **置信度分级**：strong（Meta分析/多RCT一致）/ moderate（少量RCT或观察性证据）/
    emerging（初步或机制性证据）。证据薄弱时明说。
@@ -37,26 +37,25 @@ description: 肌格拉底：循证健身知识问答 + 训练动作教学视频�
 6. **伪科学直接拒绝**并给循证替代：排毒、燃脂丸、局部减脂、"代谢损伤"恐吓、酸碱体质、电脉冲腹肌贴等。
 7. **时效标注**：视频内容必带检索日期（视频可能被删）；文献带年份。
 
-## 脚本速查（标准库为主，无需预装依赖）
+## 一行命令速查（统一入口，先体检再干活）
 
-依赖说明：B站登录二维码自动补装纯 Python 包 `qrcode`；弹幕解压兼容裸 deflate（当前B站行为），
-极少数节点需可选包 `brotli`——脚本会明确提示 `pip install brotli`，装不装都不影响字幕/评论。
+所有功能从**一个入口**走，先解析一次技能根（= 本 SKILL.md 所在目录），之后全部用绝对路径：
 
 ```bash
-# 文献
-python scripts/search_papers.py "protein intake muscle hypertrophy" --max 8
-python scripts/search_papers.py fulltext PMC1234567 --out 全文缓存.txt   # 深挖读全文
-python scripts/verify_citations.py <DOI或PMID> ...                      # 引用硬校验
+S="<技能根>/scripts/socrates.py"        # 把 <技能根> 换成 SKILL.md 所在目录
 
-# B站（首次先扫码：登录态存 credentials/bilibili.json）
-python scripts/bilibili_login.py
-python scripts/bilibili_search.py "深蹲 教学" [--author 凯圣王] [--limit 20]
-python scripts/bilibili_fetch.py BV1xxx [--out 素材包.json]             # 字幕/弹幕爆点/高赞评论
-
-# 抖音（凭证跨 agent 通用，见 references/douyin.md）
-python scripts/douyin_cookies.py check
-python scripts/douyin_cookies.py to-playwright state.json               # 给任意 Playwright 系 agent 用
+python "$S" status                                              # ① 接手前先体检：登录态/依赖/wiki 条目/文献源连通
+python "$S" paper "protein intake hypertrophy" --max 8          # ② 三源文献检索（Europe PMC+OpenAlex+Crossref）
+python "$S" paper --fulltext PMC1234567 --out 全文缓存.txt       #    深挖档读全文
+python "$S" verify <DOI或PMID>...                               # ③ 引用硬校验（exit 2 = 有问题，必须中断）
+python "$S" bili-login                                          # ④ B站扫码登录（首次一次）
+python "$S" bili-search "深蹲 教学" --author 凯圣王 --limit 20    # ⑤ B站搜索（支持 --author 过滤白名单UP）
+python "$S" bili-fetch BV1xxx BV2yyy --out 素材包.json           # ⑥ 抓素材包：字幕/弹幕爆点/高赞评论（可多个BV）
+python "$S" douyin check                                        # ⑦ 抖音登录态；to-playwright OUT / from-playwright SRC 同理
 ```
+
+各子功能也保留独立脚本（`scripts/` 下同名 `.py`，可单独运行），但一律推荐统一入口。
+依赖：标准库为主；`qrcode` 在 bili-login 时自动补装；`brotli` 仅个别弹幕节点需要（脚本会明确提示）。
 
 ## UP主白名单
 
@@ -66,6 +65,8 @@ python scripts/douyin_cookies.py to-playwright state.json               # 给任
 
 ## 一次性初始化（各做一次，之后免维护）
 
-- **B站**：跑 `bilibili_login.py`，用户用B站APP扫码（AI字幕必需登录态）。
+- **B站**：`python "$S" bili-login`，用户用B站APP扫码（AI字幕必需登录态）。
 - **抖音**：用户在任意浏览器（ZCode 内置浏览器或其他 agent 的浏览器均可）扫码登录一次，
   cookie 按规范存 `credentials/douyin_cookies.json`——详见 references/douyin.md。
+
+初始化前可先 `python "$S" status` 看缺什么。

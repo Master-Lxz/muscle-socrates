@@ -19,14 +19,14 @@ Playwright / Playwright MCP、Chrome DevTools MCP、puppeteer/CDP，甚至人肉
               "path": "/", "expires": 1790000000.0}]}
 ```
 
-`scripts/douyin_cookies.py` 负责校验与互转：
+统一入口（`$S` = `<技能根>/scripts/socrates.py`）的 `douyin` 子命令负责校验与互转：
 
 | 子命令 | 用途 |
 |---|---|
-| `check` | sessionid/sessionid_ss 存在且未过期、ttwid 存在 → 有效 |
-| `to-playwright <out>` | 转 Playwright storage_state，Playwright 系 agent `new_context(storage_state=out)` 直接用 |
-| `from-playwright <in>` | 从 Playwright `context.cookies()` 导回规范文件 |
-| `from-netscape <in>` | 从浏览器插件导出的 cookies.txt 导入 |
+| `python "$S" douyin check` | sessionid/sessionid_ss 存在且未过期、ttwid 存在 → 有效 |
+| `python "$S" douyin to-playwright <out>` | 转 Playwright storage_state，Playwright 系 agent `new_context(storage_state=out)` 直接用 |
+| `python "$S" douyin from-playwright <in>` | 从 Playwright `context.cookies()` 导回规范文件 |
+| `python "$S" douyin from-netscape <in>` | 从浏览器插件导出的 cookies.txt 导入 |
 
 其他浏览器工具的注入方式：
 
@@ -40,15 +40,15 @@ Playwright / Playwright MCP、Chrome DevTools MCP、puppeteer/CDP，甚至人肉
 1. 打开 `https://www.douyin.com/`
 2. 出现登录框/登录墙时停下，**请用户用抖音 APP 扫码**（本路线唯一必须人工的一步）
 3. 登录成功后立即导出 cookies 存入规范文件：
-   - Playwright 系：`context.cookies()` → 存临时 JSON → `douyin_cookies.py from-playwright`
-   - 其他工具：导出成 Netscape cookies.txt → `from-netscape`；或直接按规范格式写 JSON
-4. `python scripts/douyin_cookies.py check` 确认 valid
+   - Playwright 系：`context.cookies()` → 存临时 JSON → `python "$S" douyin from-playwright 临时.json`
+   - 其他工具：导出成 Netscape cookies.txt → `python "$S" douyin from-netscape cookies.txt`；或直接按规范格式写 JSON
+4. `python "$S" douyin check` 确认 valid
 
 cookie 通常数周后过期：`check` 失败 → 回到第 1 步重新扫码。
 
 ## 每次执行流程
 
-1. `douyin_cookies.py check` → 无效先走登录
+1. `python "$S" douyin check` → 无效先走登录
 2. 把 cookies 注入当前浏览器
 3. 打开搜索 `https://www.douyin.com/search/{URL编码的"动作名 教学"}?type=video`
 4. 有新手引导/青少年模式弹窗就关掉

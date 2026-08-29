@@ -16,14 +16,16 @@
 
 ## B站流程（主力，纯 API）
 
-1. **登录检查**：`credentials/bilibili.json` 不存在 → 先跑 `scripts/bilibili_login.py`，
+> 下文 `$S` = `<技能根>/scripts/socrates.py`（统一命令行入口）。
+
+1. **登录检查**：`credentials/bilibili.json` 不存在 → 先跑 `python "$S" bili-login`，
    让用户用B站APP扫码（AI字幕必需登录态；未登录搜索与元数据仍可用，仅字幕缺失）。
-2. **检索**：`python scripts/bilibili_search.py "<动作名> 教学" --limit 20`；
+2. **检索**：`python "$S" bili-search "<动作名> 教学" --limit 20`；
    可再跑一次 `"<动作名> 教程"` 合并去重。
 3. **重排**：白名单UP置顶 → 按播放量与弹幕/收藏活跃度 → 剔除明显低质
    （合集切片、纯混剪、时长 <3 分钟、无字幕且弹幕极少）。
-4. **选 3–5 个**（白名单有结果则至少含 1 个），逐个
-   `python scripts/bilibili_fetch.py BVxxx --out 临时素材包.json`。
+4. **选 3–5 个**（白名单有结果则至少含 1 个），一次抓齐：
+   `python "$S" bili-fetch BVxxx BVyyy BVzzz --out 临时素材包.json`。
 5. **逐视频归纳**：
    - **字幕 = 教学文字稿**：提炼 setup/站位、下放与发力轨迹、呼吸节奏、次数组数、常见错误。
    - **弹幕 30s 爆点 = 观众反复困惑或拍案处**：爆点对应时间点附近的讲解是关键段，引用带时间戳（视频名 mm:ss）。

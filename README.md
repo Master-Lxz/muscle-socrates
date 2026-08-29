@@ -26,14 +26,26 @@ git clone https://github.com/Master-Lxz/muscle-socrates.git ~/.agents/skills/mus
 
 | 平台 | 动作 | 产物 |
 |---|---|---|
-| B站 | `python scripts/bilibili_login.py`，B站APP 扫码 | `credentials/bilibili.json`（SESSDATA 等） |
+| 体检 | `python scripts/socrates.py status` | 一眼看清缺什么 |
+| B站 | `python scripts/socrates.py bili-login`，B站APP 扫码 | `credentials/bilibili.json`（SESSDATA 等） |
 | 抖音 | 任意浏览器打开 douyin.com 扫码登录，导出 cookie | `credentials/douyin_cookies.json`（跨 agent 规范格式，见 references/douyin.md） |
 
 两个平台各自登录一次，之后免维护；cookie 过期重跑登录即可。
 
 ## 使用示例
 
-在 agent 对话里直接说：
+所有功能都从统一命令行入口 `scripts/socrates.py` 走（`S` = 技能根目录）：
+
+```bash
+python "$S" status                              # 一键体检
+python "$S" paper "protein intake hypertrophy"  # 三源文献检索
+python "$S" verify 10.1111/xxx 12345678         # 引用硬校验
+python "$S" bili-search "深蹲 教学" --author 凯圣王
+python "$S" bili-fetch BV1xxx BV2yyy --out 素材包.json   # 支持多视频
+python "$S" douyin check
+```
+
+在 agent 对话里也可以直接说：
 
 - "蛋白粉到底有没有用？" → 文献管线快答
 - "深蹲膝盖要不要过脚尖？凯圣王是怎么教的？" → 视频管线 + 文献校验，输出要点与跳转链接
@@ -42,16 +54,17 @@ git clone https://github.com/Master-Lxz/muscle-socrates.git ~/.agents/skills/mus
 ## 目录结构
 
 ```
-fitness-wiki/
-├── SKILL.md                 # 入口 + 触发路由 + 铁律
+muscle-socrates/
+├── SKILL.md                 # 入口 + 触发路由 + 铁律 + 一行命令速查
 ├── scripts/
+│   ├── socrates.py          # ★ 统一命令行入口（status/paper/verify/bili-*/douyin）
 │   ├── apilib.py            # 公共 HTTP（纯标准库）
 │   ├── search_papers.py     # Europe PMC / OpenAlex / Crossref 检索 + OA 全文
 │   ├── verify_citations.py  # DOI/PMID 存在性 + 撤稿校验（exit 2 = 硬中断）
 │   ├── bili_lib.py          # B站 Cookie 持久化 / wbi 签名 / 弹幕解析
 │   ├── bilibili_login.py    # 扫码登录 → credentials/bilibili.json
-│   ├── bilibili_search.py   # wbi 签名搜索
-│   ├── bilibili_fetch.py    # 字幕/弹幕爆点/高赞评论素材包
+│   ├── bilibili_search.py   # wbi 签名搜索（风控自动重试）
+│   ├── bilibili_fetch.py    # 字幕/弹幕爆点/高赞评论素材包（支持多视频）
 │   └── douyin_cookies.py    # 抖音 cookie 校验与跨格式转换
 ├── references/
 │   ├── knowledge.md         # 文献管线规范

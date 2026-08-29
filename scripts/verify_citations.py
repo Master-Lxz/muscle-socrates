@@ -73,10 +73,10 @@ def check_pmid(pmid: str) -> dict:
                 "year": None, "journal": "", "note": str(e)}
 
 
-def main() -> int:
+def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("ids", nargs="+", help="DOI（10.xxxx/...）或 PMID（纯数字）")
-    a = ap.parse_args()
+    a = ap.parse_args(argv)
 
     apilib.stdout_utf8()
     results = [check_pmid(x) if re.fullmatch(r"\d{5,9}", x) else check_doi(x)

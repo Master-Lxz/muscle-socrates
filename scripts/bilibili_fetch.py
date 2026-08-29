@@ -1,8 +1,8 @@
-"""抓取单个B站视频的教学素材包：AI字幕（需登录）+ 弹幕爆点 + 高赞评论。
+"""抓取B站视频的教学素材包：AI字幕（需登录）+ 弹幕爆点 + 高赞评论。
 
 用法:
-  python bilibili_fetch.py BV1xxx [--comments 15] [--bursts 8] [--out 素材包.json]
-  （--out 时写 UTF-8 文件；stdout 输出 JSON 摘要）
+  python bilibili_fetch.py BV1xxx [BV2yyy ...] [--comments 15] [--bursts 8] [--out 素材包.json]
+  （支持多个 BV；--out 时写 UTF-8 文件；stdout 输出 JSON 摘要）
 字幕依赖 SESSDATA；未登录自动回退弹幕，并在 subtitle.note 里说明。
 """
 from __future__ import annotations
@@ -62,23 +62,13 @@ def get_comments(aid: int, cookies: dict, want: int) -> list[dict]:
     return sorted(out, key=lambda x: -x["like"])[:want]
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("bvid", help="BV 号或完整视频链接")
-    ap.add_argument("--comments", type=int, default=15)
-    ap.add_argument("--bursts", type=int, default=8)
-    ap.add_argument("--out", default=None)
-    a = ap.parse_args()
-
-    apilib.stdout_utf8()
-    bvid = a.bvid.strip("/").split("/")[-1]
-    cookies = bili_lib.load_cookies()
-
+def fetch_one(raw_bvid: str, cookies: dict, a) -> dict | None:
+    bvid = raw_bvid.strip("/").split("/")[-1]
     v = apilib.http_json(VIEW, params={"bvid": bvid}, cookies=cookies)
     if v.get("code") != 0:
-        print(json.dumps({"code": v.get("code"), "message": v.get("message")},
-                         ensure_ascii=False))
-        return 1
+        print(json.dumps({"code": v.get("code"), "message": v.get("message"),
+                          "bvid": bvid}, ensure_ascii=False))
+        return None
     d = v["data"]
     aid, cid = d["aid"], d["cid"]
 
@@ -90,7 +80,7 @@ def main() -> int:
                                                       cookies=cookies))
     except RuntimeError as e:
         dm_note = str(e)
-    pack = {
+    return {
         "video": {
             "bvid": bvid, "aid": aid, "cid": cid,
             "title": d.get("title"),
@@ -108,16 +98,36 @@ def main() -> int:
         "comments": get_comments(aid, cookies, a.comments),
     }
 
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("bvid", nargs="+", help="BV 号或完整视频链接（可多个）")
+    ap.add_argument("--comments", type=int, default=15)
+    ap.add_argument("--bursts", type=int, default=8)
+    ap.add_argument("--out", default=None)
+    a = ap.parse_args(argv)
+
+    apilib.stdout_utf8()
+    cookies = bili_lib.load_cookies()
+
+    packs: list[dict] = []
+    for raw in a.bvid:
+        pack = fetch_one(raw, cookies, a)
+        if pack is None:
+            return 1
+        packs.append(pack)
+
+    result = packs[0] if len(packs) == 1 else {"videos": packs}
     if a.out:
         pathlib.Path(a.out).write_text(
-            json.dumps(pack, ensure_ascii=False, indent=2), "utf-8")
-        print(json.dumps({"code": 0, "written": a.out,
-                          "title": pack["video"]["title"],
-                          "subtitle_segments": len(segs),
-                          "danmaku": len(dm),
-                          "comments": len(pack["comments"])}, ensure_ascii=False))
+            json.dumps(result, ensure_ascii=False, indent=2), "utf-8")
+        print(json.dumps({"code": 0, "written": a.out, "videos": len(packs),
+                          "titles": [p["video"]["title"] for p in packs],
+                          "danmaku_total": sum(p["danmaku"]["fetched"] for p in packs),
+                          "comments_total": sum(len(p["comments"]) for p in packs)},
+                         ensure_ascii=False))
     else:
-        print(json.dumps(pack, ensure_ascii=False, indent=2))
+        print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 
 

@@ -137,7 +137,7 @@ def fulltext(pmcid: str, out_path: str | None) -> int:
     return 0
 
 
-def main() -> int:
+def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("query", help="英文检索式，或子命令 fulltext")
     ap.add_argument("pmcid", nargs="?", help="fulltext 子命令的 PMCID")
@@ -145,7 +145,7 @@ def main() -> int:
     ap.add_argument("--source", default="all",
                     choices=["all", "europepmc", "openalex", "crossref"])
     ap.add_argument("--out", default=None)
-    a = ap.parse_args()
+    a = ap.parse_args(argv)
 
     apilib.stdout_utf8()
     if a.query == "fulltext":

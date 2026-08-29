@@ -24,12 +24,12 @@ import bili_lib  # noqa: E402
 API = "https://api.bilibili.com/x/web-interface/wbi/search/type"
 
 
-def main() -> int:
+def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("keyword", help="搜索关键词（中文即可）")
     ap.add_argument("--author", default=None, help="只保留 UP主名包含该子串的结果")
     ap.add_argument("--limit", type=int, default=20)
-    a = ap.parse_args()
+    a = ap.parse_args(argv)
 
     apilib.stdout_utf8()
     cookies = bili_lib.ensure_buvid(bili_lib.load_cookies())

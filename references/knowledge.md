@@ -10,11 +10,13 @@
 
 ## 快答档（默认）
 
+> 下文 `$S` = `<技能根>/scripts/socrates.py`（统一命令行入口）。
+
 1. 把问题翻译成英文检索式（同义词 OR 连接，如 `protein supplementation OR protein intake` AND `muscle hypertrophy OR muscle mass`）。
-2. `python scripts/search_papers.py "<检索式>" --max 8`
+2. `python "$S" paper "<检索式>" --max 8`
 3. 挑 3–5 篇：优先级 Meta分析/系统综述 > RCT > 前瞻队列；>10 年的经典结论可用但注明年份；同结论取证据等级高的。
 4. 读摘要（输出的 abstract 字段）。
-5. `python scripts/verify_citations.py <每条DOI或PMID>` — 必须全绿（exit 0）。
+5. `python "$S" verify <每条DOI或PMID>` — 必须全绿（exit 0）。
 6. 按下述格式输出，标置信度。快答**不沉淀** wiki。
 
 ## 深挖档
@@ -22,7 +24,7 @@
 触发：用户要"深入/详细/写个条目"，或快答发现证据冲突。
 
 1. 先把快答 1–5 步跑完。
-2. 对 top 2–3 篇有 PMCID 的，`search_papers.py fulltext PMCID --out 全文.txt` 读全文：看方法学（样本量、时长、对照设置）、剂量/频率细节、人群适用性。
+2. 对 top 2–3 篇有 PMCID 的，`python "$S" paper --fulltext PMCID --out 全文.txt` 读全文：看方法学（样本量、时长、对照设置）、剂量/频率细节、人群适用性。
 3. 用 OpenAlex 引文数判断影响面；被引高的争议论文要提反面研究。
 4. 写 wiki 条目（`wiki/_知识条目模板.md`），文件名用问题主题（如 `蛋白粉与增肌.md`）。
 5. 输出正文，末尾告知已沉淀条目。
@@ -57,5 +59,5 @@
 
 ## 硬中断规则
 
-`verify_citations.py` exit 2：**不得输出该引用**。撤稿文献只能在"注意/争议"章节
+`socrates.py verify`（或 `verify_citations.py`）exit 2：**不得输出该引用**。撤稿文献只能在"注意/争议"章节
 提及且必须标注"已撤稿"。找不到 DOI 的记忆引用 = 编造，删除该引用或重新检索。

@@ -92,7 +92,7 @@ def cmd_from_netscape(src: str) -> None:
     save(cookies)
 
 
-def main() -> int:
+def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("check")
@@ -100,7 +100,7 @@ def main() -> int:
     p = sub.add_parser("to-playwright"); p.add_argument("out")
     p = sub.add_parser("from-playwright"); p.add_argument("src")
     p = sub.add_parser("from-netscape"); p.add_argument("src")
-    a = ap.parse_args()
+    a = ap.parse_args(argv)
 
     apilib.stdout_utf8()
     if a.cmd == "check":
