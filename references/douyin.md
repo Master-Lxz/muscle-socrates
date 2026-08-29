@@ -16,7 +16,9 @@ Playwright / Playwright MCP、Chrome DevTools MCP、puppeteer/CDP，甚至人肉
 - **唯一需要可见窗口的时刻**：扫码登录那半分钟（用户要对着屏幕扫）。
 - 登录确认、cookie 存盘后，**立即关闭登录窗口/标签页**——不恋战。
 - **抓取会话默认后台**：能无头就无头，不能无头就最小化/收起面板。
-- **收尾必关**：本次打开的搜索页/视频页全部关掉，浏览器会话结束，不留常驻窗口。
+- **收尾必关的是"可见窗口"**：本次打开的搜索页/视频页全部关掉，不留任何前台窗口。
+- **headless 常驻会话可以保留**（如 agent-browser 的 `--session douyin`）：它没有窗口、
+  能跨对话复用登录态；但临时会话和可见窗口必须 finally 里正常 close，避免僵尸 Chromium。
 - 例外：用户明确说"我想看着你操作"时才保持可见。
 
 各工具落地：
@@ -27,6 +29,28 @@ Playwright / Playwright MCP、Chrome DevTools MCP、puppeteer/CDP，甚至人肉
   抓取用**无头**新会话加载 storage_state；会话用完 `context.close()`
 - **puppeteer / CDP**：同上，抓取走 headless
 - **人肉/半自动**：只请用户在扫码时看一眼屏幕，其余步骤不要在用户面前翻页
+
+## 推荐实现（agent-browser 版速查）
+
+技能保持能力无关；如果你手里的工具是 agent-browser，这是踩坑后整理的开箱即用路径：
+
+```bash
+# ① 常驻会话：headless + 持久命名 session，跨对话复用登录态，默认无弹窗
+agent-browser --session douyin open "https://www.douyin.com"
+
+# ② 首次登录：临时切 headed 把二维码亮给用户；确认登录 → 导出 cookie 到规范文件 → 关掉可见窗口
+agent-browser --session douyin --headed open "https://www.douyin.com"
+
+# ③ 抓取一律 snapshot 读内容（不要用 eval，原因见"已踩过的坑"）
+agent-browser --session douyin snapshot
+agent-browser --session douyin open "https://www.douyin.com/search/深蹲 教学?type=video"
+
+# ④ 收尾：可见窗口与临时会话 finally 里必关；--session douyin 常驻保留以复用登录态，
+#    同一 session 名只留一个 daemon，防僵尸 Chromium
+agent-browser --session douyin close
+```
+
+Windows 下 Chromium 下载被证书拦截时：设 `AGENT_BROWSER_EXECUTABLE_PATH` 指向本机 Chrome。
 
 ## 凭证规范（跨 agent 通用）
 
@@ -53,6 +77,8 @@ Playwright / Playwright MCP、Chrome DevTools MCP、puppeteer/CDP，甚至人肉
 - **ZCode 内置浏览器 / browser-use**：`check` 确认有效后，把 cookies 逐条注入该工具的 cookie 设置接口
 - **puppeteer / CDP**：`page.setCookie(...)` 逐条注入
 - **无浏览器但有 cookie 的脚本流**：不要硬闯 API——搜索接口要 A_Bogus 签名 + 风控，公开 cookie 过不了
+- **持久 session vs 规范文件**：`--session douyin` 这类持久会话是**单个工具**的登录态载体，
+  cookie 规范文件才是**跨工具交换的唯一格式**——登录确认后尽量两边都落（session 保活 + 导出规范文件）
 
 ## 一次性登录（任何浏览器工具）
 
@@ -77,19 +103,36 @@ cookie 通常数周后过期：`check` 失败 → 回到第 1 步重新扫码。
 5. 挑前 2–3 个视频（白名单UP优先）：记录作者、标题、点赞数、视频链接（`https://www.douyin.com/video/{id}`）
 6. 逐个打开视频页：
    - 点 **"AI 总结"**（入口文案常见"AI总结/看AI总结/总结一下"，面板有分段要点）→ 摘录要点
-   - 没有 AI 总结入口 → 用高赞评论代替
+   - **AI 总结面板在跨域 iframe 里**：`eval`/页面内 JS 因同源策略拿不到它——拿不到 ≠ 总结不存在。
+     Playwright 系用 `page.frame_locator()` 读 frame 内文本；agent-browser 用 `snapshot` 读全帧内容；
+     两条路都失败才降级用高赞评论，并在输出注明"AI 总结未获取"
    - 向下滚动评论区，读前 20–30 条：点赞数 + 文本，重点看教练/从业者视角的纠错评论
 7. **收尾必关**：关掉本次打开的所有搜索页/视频页并结束浏览器会话，不留常驻窗口；
    然后按 movement.md 归纳（术语校对：ASR 错别字用常识+评论修正）
 
 > DOM 细节说明：抖音前端 class 名是构建期混淆的，不要依赖具体 class；
 > 用**可见文本/aria/role** 定位（如找含"AI 总结"字样的按钮），滚动用页面级滚动。
+> **`eval` 在抖音页面经常失效**（风控注入检测 + AI 总结在跨域 iframe）——抓内容一律用
+> snapshot 的文本/引用（agent-browser 用 `snapshot -i`），不要靠注入 JS。
+
+## 已踩过的坑（写给下一个 agent）
+
+| 坑 | 处理 |
+|---|---|
+| `eval` 在抖音页面失效（风控 + 跨域 iframe） | 定位一律用 snapshot 文本/引用（agent-browser 用 `snapshot -i`）；跨 frame 文本用 Playwright `page.frame_locator()` |
+| AI 总结面板在跨域 iframe，eval 拿不到 | 拿不到 ≠ 不存在：换 frame 级读取；实在不行降级"标题+评论"归纳并在输出注明 |
+| Windows 下 Chromium 下载被证书拦 | `AGENT_BROWSER_EXECUTABLE_PATH` 指向本机 Chrome |
+| daemon/僵尸 Chromium 泄漏 | 同一 session 名只留一个 daemon；临时与可见会话 close 放 finally；多个 chromium 残留就手动清 |
+| cookie 是明文 | `credentials/` 别进 dotfiles 同步/备份/网盘；.gitignore 已兜底 |
+| 匿名 B站搜索 -412 / v_voucher | 跑一次 `bili-login` 扫码；视频管线要双源（B站+抖音）才算达标 |
 
 ## 降级与边界
 
 - **agent 完全没有浏览器能力**：明说"抖音路线需要浏览器（登录态是浏览器 cookie）"，
   给选项：a) 用户在自己浏览器登录抖音后用 cookie 插件导出 → `from-netscape` 导入；
   b) 本轮只出 B站结果。
+- **抖音 AI 总结确实拿不到时**：输出注明"AI 总结未获取，依据标题+评论区归纳"，
+  并让 B站源（AI 字幕）顶上补齐质量——别默默漏掉这块信息。
 - **视频被删/失效**：条目标"已失效（最后确认 YYYY-MM-DD）"，不删历史记录。
 - **不要**为绕过登录去调第三方下载 API（仍需 cookie 且非官方、随时失效）；
   用户未来明确要求时，可评估 Evil0ctal/Douyin_TikTok_Download_API 仅作只读详情/评论补充。

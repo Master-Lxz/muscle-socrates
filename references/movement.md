@@ -20,6 +20,8 @@
 
 1. **登录检查**：`credentials/bilibili.json` 不存在 → 先跑 `python "$S" bili-login`，
    让用户用B站APP扫码（AI字幕必需登录态；未登录搜索与元数据仍可用，仅字幕缺失）。
+   搜索连续 -412/风控挑战时，**靠 `bili-login` 保双源，不要把视频管线降成抖音单源**——
+   健身教学 B站 UP 主密度高，单走抖音是浪费。
 2. **检索**：`python "$S" bili-search "<动作名> 教学" --limit 20`——
    白名单UP已由脚本**自动置顶**并标注 `whitelist: true`（creators.json 驱动，无需人工重排）；
    可再跑一次 `"<动作名> 教程"` 合并去重。
