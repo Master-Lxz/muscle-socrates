@@ -1,0 +1,18 @@
+{
+  "preferred": [
+    {
+      "name": "凯圣王",
+      "platforms": ["bilibili", "douyin"],
+      "uid": {"bilibili": 2100737396},
+      "note": "循证训练科普方向。bilibili uid 已由 view 接口实测回填（BV1iQ4y1e7YL）。"
+    },
+    {
+      "name": "谭成义",
+      "platforms": ["bilibili", "douyin"],
+      "uid": null,
+      "note": "同上。"
+    }
+  ],
+  "pending": [],
+  "规则": "白名单UP排最前但不排他：白名单没覆盖的动作或优质内容照常收录，输出标注是否白名单。其余UP主待用户确认后填入 pending。用户直接编辑本文件即可调整偏好。"
+}
