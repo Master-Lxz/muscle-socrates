@@ -91,5 +91,7 @@ creators.json（防重名误配）。
 - **B站**：`python "$S" bili-login`，用户用B站APP扫码（AI字幕必需登录态）。
 - **抖音**：用户在任意浏览器（ZCode 内置浏览器或其他 agent 的浏览器均可）扫码登录一次，
   cookie 按规范存 `credentials/douyin_cookies.json`——详见 references/douyin.md。
+  **登录确认后立即关闭可见窗口，之后抓取一律后台跑**（douyin.md「可见性纪律」）：
+  用户要的是答案，不是盯着一个挂在前台的抖音页面。
 
 初始化前可先 `python "$S" status` 看缺什么。
