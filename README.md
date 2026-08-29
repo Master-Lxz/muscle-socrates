@@ -10,14 +10,22 @@ ZCode 技能：**循证健身知识问答**（仿 [grounded](https://github.com/
 2. **动作教学归纳**：B站搜索 → AI字幕/弹幕爆点/高赞评论 → 归纳教学要点；抖音走浏览器读平台 AI 总结 + 评论区。UP主白名单优先（当前偏好：凯圣王、谭成义）。
 3. **沉淀层**：`wiki/` 存知识条目与动作条目，先查条目再跑管线。
 
-## 安装（ZCode / 其他 agent 通用）
+## 安装
 
-把本仓库克隆到 agent 的技能目录即可：
+推荐用 Vercel 的技能包管理器一行安装（自动发现本仓库的技能，并按你的 agent 写入对应技能目录）：
+
+```bash
+npx skills add Master-Lxz/muscle-socrates
+```
+
+没有 Node.js 环境时，直接克隆到 agent 的技能目录也行：
 
 ```bash
 git clone https://github.com/Master-Lxz/muscle-socrates.git ~/.agents/skills/muscle-socrates
 # ZCode 也支持 ~/.zcode/skills/muscle-socrates
 ```
+
+> 国内网络访问 GitHub 需自行解决加速（FastGithub、代理等）；装好后更新只需在技能目录里 `git pull`，或 `npx skills update`。
 
 脚本为 Python 标准库为主（3.10+）：B站登录时自动补装纯 Python 包 `qrcode`（终端出二维码）；
 弹幕解压已兼容B站当前的"裸 deflate"格式，如遇 brotli 节点按脚本提示 `pip install brotli`（可选）。
