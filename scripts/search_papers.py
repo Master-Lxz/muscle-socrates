@@ -27,8 +27,11 @@ CROSSREF_SEARCH = "https://api.crossref.org/works"
 
 
 def _clip(s: str | None, n: int = 1400) -> str:
-    s = re.sub(r"<[^>]+>", " ", s or "")
-    s = html.unescape(s)
+    # 先 unescape 再去标签：Europe PMC 的标签是转义形式（&lt;i&gt;），
+    # 顺序反了会让标签在 unescape 后"复活"混进正文
+    s = html.unescape(s or "")
+    s = re.sub(r"<[^>]+>", " ", s)
+    s = html.unescape(s)  # 兜底二次转义（&amp;lt; 之类）
     return re.sub(r"\s+", " ", s).strip()[:n]
 
 

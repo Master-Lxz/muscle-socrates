@@ -73,23 +73,37 @@ def cmd_to_playwright(out: str) -> str:
     return out
 
 
-def cmd_from_playwright(src: str) -> None:
+def _keep(c_domain: str) -> bool:
+    return "douyin.com" in c_domain
+
+
+def cmd_from_playwright(src: str) -> dict:
     pw = json.loads(pathlib.Path(src).read_text("utf-8"))
-    save([{"name": c["name"], "value": c["value"], "domain": c.get("domain", ".douyin.com"),
-           "path": c.get("path", "/"), "expires": c.get("expires", -1)}
-          for c in pw.get("cookies", [])])
+    kept = [{"name": c["name"], "value": c["value"], "domain": c.get("domain", ".douyin.com"),
+             "path": c.get("path", "/"), "expires": c.get("expires", -1)}
+            for c in pw.get("cookies", []) if _keep(c.get("domain", ""))]
+    save(kept)
+    return {"imported": len(kept),
+            "skipped_other_domains": len(pw.get("cookies", [])) - len(kept)}
 
 
-def cmd_from_netscape(src: str) -> None:
-    cookies = []
+def cmd_from_netscape(src: str) -> dict:
+    """只收 douyin.com 域：整 profile 导出的 cookies.txt 里会有全浏览器
+    （Google/银行/邮箱…）的 cookie，混进这个"抖音专用、不外发"的凭证文件是事故。"""
+    cookies: list[dict] = []
+    skipped = 0
     for line in pathlib.Path(src).read_text("utf-8", "replace").splitlines():
         if not line.strip() or line.startswith("# "):
             continue
         parts = line.split("\t")
         if len(parts) >= 7:
+            if not _keep(parts[0]):
+                skipped += 1
+                continue
             cookies.append({"domain": parts[0], "path": parts[2], "name": parts[5],
                             "value": parts[6], "expires": float(parts[4] or 0)})
     save(cookies)
+    return {"imported": len(cookies), "skipped_other_domains": skipped}
 
 
 def main(argv=None) -> int:
@@ -114,14 +128,13 @@ def main(argv=None) -> int:
         print(json.dumps({"code": 0, "written": cmd_to_playwright(a.out)}, ensure_ascii=False))
         return 0
     if a.cmd == "from-playwright":
-        cmd_from_playwright(a.src)
-        print(json.dumps({"code": 0, "imported_from": a.src}, ensure_ascii=False))
-        return 0
-    if a.cmd == "from-netscape":
-        cmd_from_netscape(a.src)
-        print(json.dumps({"code": 0, "imported_from": a.src}, ensure_ascii=False))
-        return 0
-    return 1
+        r = cmd_from_playwright(a.src)
+    elif a.cmd == "from-netscape":
+        r = cmd_from_netscape(a.src)
+    else:
+        return 1
+    print(json.dumps({"code": 0, "imported_from": a.src, **r}, ensure_ascii=False))
+    return 0
 
 
 if __name__ == "__main__":

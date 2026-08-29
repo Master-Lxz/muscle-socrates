@@ -57,9 +57,22 @@ def cmd_status(_args) -> int:
             deps[m] = False
     report["optional_deps"] = deps
 
-    entries = sorted(p.stem for p in (ROOT / "wiki").glob("*.md")
-                     if not p.name.startswith("_"))
-    report["wiki_entries"] = entries
+    # wiki 条目数 + 90 天过期检查（条目 frontmatter 里的"更新日期"字段）
+    import datetime
+    entries, stale = [], []
+    for p in (ROOT / "wiki").glob("*.md"):
+        if p.name.startswith("_"):
+            continue
+        entries.append(p.stem)
+        m = re.search(r"更新日期:\s*(\d{4}-\d{2}-\d{2})",
+                      p.read_text("utf-8", "replace"))
+        if m:
+            age = (datetime.date.today()
+                   - datetime.date.fromisoformat(m.group(1))).days
+            if age > 90:
+                stale.append({"entry": p.stem, "age_days": age})
+    report["wiki"] = {"entries": sorted(entries), "stale_over_90d": stale,
+                      "hint": "stale 条目回答前建议重跑管线更新"}
 
     try:
         t0 = time.time()
@@ -108,8 +121,7 @@ def cmd_paper(args) -> int:
 
 def cmd_verify(args) -> int:
     import verify_citations
-    results = [verify_citations.check_pmid(x) if re.fullmatch(r"\d{5,9}", x)
-               else verify_citations.check_doi(x) for x in args.ids]
+    results = [verify_citations.check(x) for x in args.ids]
     bad = [r for r in results if r["status"] != "verified"]
     print(json.dumps({"all_verified": not bad, "results": results}, ensure_ascii=False))
     return 2 if bad else 0
@@ -157,10 +169,12 @@ def cmd_douyin(args) -> int:
                          ensure_ascii=False))
         return 0
     if cmd == "from-playwright":
-        dc.cmd_from_playwright(args.path)
+        r = dc.cmd_from_playwright(args.path)
     elif cmd == "from-netscape":
-        dc.cmd_from_netscape(args.path)
-    print(json.dumps({"code": 0, "imported_from": args.path}, ensure_ascii=False))
+        r = dc.cmd_from_netscape(args.path)
+    else:
+        return 0
+    print(json.dumps({"code": 0, "imported_from": args.path, **r}, ensure_ascii=False))
     return 0
 
 

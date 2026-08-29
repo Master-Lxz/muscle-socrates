@@ -1,6 +1,6 @@
 ---
 name: muscle-socrates
-description: 肌格拉底：循证健身知识问答 + 训练动作教学视频归纳。凡用户问健身知识（蛋白粉、增肌、减脂、有氧、恢复、睡眠、补剂、训练计划、动作标准等）或提到具体训练动作（深蹲、卧推、硬拉、划船、引体向上等怎么练/哪个UP主教得好），即使用户没说"肌格拉底"也应触发。知识问题→文献管线（Europe PMC/OpenAlex/Crossref 实时检索，零记忆引用）；动作问题→视频管线（B站 API + 抖音浏览器，归纳国内博主教学要点并附跳转链接）。两条管线互相校验，结果沉淀进 wiki/ 条目。
+description: 肌格拉底：循证健身知识问答 + 训练动作教学视频归纳。凡用户问健身知识（蛋白粉、增肌、减脂、有氧、恢复、睡眠、补剂、训练计划、动作标准等，中英文均可：protein powder、whey、squat、bench press、deadlift、fat loss、cardio 同样触发）或提到具体训练动作（深蹲、卧推、硬拉、划船、引体向上等怎么练/哪个UP主教得好），即使用户没说"肌格拉底"也应触发。知识问题→文献管线（Europe PMC/OpenAlex/Crossref 实时检索，零记忆引用）；动作问题→视频管线（B站 API + 抖音浏览器，归纳国内博主教学要点并附跳转链接）。两条管线互相校验，结果沉淀进 wiki/ 条目。
 ---
 
 # 肌格拉底（muscle-socrates）
@@ -23,7 +23,9 @@ description: 肌格拉底：循证健身知识问答 + 训练动作教学视频�
 | 混合问题 | 两条都跑，按动作条目模板合并 | 两个都读 |
 
 **先查 `wiki/`**：命中条目直接答（标注"依据 wiki 条目，更新于 YYYY-MM-DD"），没有才跑管线；
-深挖结果按 `wiki/_知识条目模板.md` / `wiki/_动作条目模板.md` 沉淀。条目超 90 天提示可重跑更新。
+深挖结果按 `wiki/_知识条目模板.md` / `wiki/_动作条目模板.md` 沉淀。**写新条目前先按关键词扫一遍
+`wiki/*.md`（文件名+主题行），命中近似条目就在原条目追加"更新记录"、不要开新文件**——否则同一个
+问题换个问法就会重复建条，wiki 越用越散。条目超 90 天提示可重跑更新（`status` 会直接列出过期条目）。
 
 ## 铁律（两条管线共用）
 
@@ -37,20 +39,21 @@ description: 肌格拉底：循证健身知识问答 + 训练动作教学视频�
 6. **伪科学直接拒绝**并给循证替代：排毒、燃脂丸、局部减脂、"代谢损伤"恐吓、酸碱体质、电脉冲腹肌贴等。
 7. **时效标注**：视频内容必带检索日期（视频可能被删）；文献带年份。
 
-## 一行命令速查（统一入口，先体检再干活）
+## 一行命令速查（统一入口）
 
-所有功能从**一个入口**走，先解析一次技能根（= 本 SKILL.md 所在目录），之后全部用绝对路径：
+所有功能从**一个入口**走，先解析一次技能根（= 本 SKILL.md 所在目录），之后全部用绝对路径
+（`$S` 变量写法适用于 bash / Git Bash；PowerShell 环境直接写完整路径）：
 
 ```bash
 S="<技能根>/scripts/socrates.py"        # 把 <技能根> 换成 SKILL.md 所在目录
 
-python "$S" status                                              # ① 接手前先体检：登录态/依赖/wiki 条目/文献源连通
+python "$S" status                                              # ① 动作管线 / 首次接手先体检（纯知识快答可跳过，直接②）
 python "$S" paper "protein intake hypertrophy" --max 8          # ② 三源文献检索（Europe PMC+OpenAlex+Crossref）
 python "$S" paper --fulltext PMC1234567 --out 全文缓存.txt       #    深挖档读全文
 python "$S" verify <DOI或PMID>...                               # ③ 引用硬校验（exit 2 = 有问题，必须中断）
 python "$S" bili-login                                          # ④ B站扫码登录（首次一次）
 python "$S" bili-search "深蹲 教学" --author 凯圣王 --limit 20    # ⑤ B站搜索（支持 --author 过滤白名单UP）
-python "$S" bili-fetch BV1xxx BV2yyy --out 素材包.json           # ⑥ 抓素材包：字幕/弹幕爆点/高赞评论（可多个BV）
+python "$S" bili-fetch BV1xxx BV2yyy                            # ⑥ 抓素材包（可多个BV；默认落盘 .cache/ 只回摘要，--out - 才打印全文）
 python "$S" douyin check                                        # ⑦ 抖音登录态；to-playwright OUT / from-playwright SRC 同理
 ```
 

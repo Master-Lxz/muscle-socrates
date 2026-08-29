@@ -1,7 +1,8 @@
 """引用硬校验：DOI / PMID 是否真实存在、是否撤稿。零记忆引用纪律的执行器。
 
 用法:
-  python verify_citations.py 10.1016/j.jsams.2024.xx PMID:12345678 ...
+  python verify_citations.py 10.1016/j.jsams.2024.xx 12345678 PMID:28675001 ...
+  （PMID 带不带 "PMID:" 前缀都行；纯数字按 PMID 处理，其余按 DOI）
 退出码: 0 = 全部通过；2 = 存在 not_found / retracted（管线必须中断，不许带病输出）。
 撤稿信息来自 OpenAlex（接入 Retraction Watch 数据）；OpenAlex 不可达时用 Crossref
 兜底验存在性，但撤稿状态记为"未核"，输出时需注明。
@@ -73,14 +74,26 @@ def check_pmid(pmid: str) -> dict:
                 "year": None, "journal": "", "note": str(e)}
 
 
+def check(x: str) -> dict:
+    """单条校验入口：自动识别 PMID（可带 PMID: 前缀，大小写不限）与 DOI。
+
+    老 PMID 可能只有 4 位，纯数字一律按 PMID 处理；DOI 以 10. 开头，不会撞车。
+    """
+    x = (x or "").strip()
+    if re.fullmatch(r"(?i)PMID:?\d{1,9}", x):
+        return check_pmid(re.sub(r"(?i)^PMID:?", "", x))
+    if re.fullmatch(r"\d{1,9}", x):
+        return check_pmid(x)
+    return check_doi(x)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("ids", nargs="+", help="DOI（10.xxxx/...）或 PMID（纯数字）")
+    ap.add_argument("ids", nargs="+", help="DOI（10.xxxx/...）或 PMID（纯数字或 PMID:前缀）")
     a = ap.parse_args(argv)
 
     apilib.stdout_utf8()
-    results = [check_pmid(x) if re.fullmatch(r"\d{5,9}", x) else check_doi(x)
-               for x in a.ids]
+    results = [check(x) for x in a.ids]
     bad = [r for r in results if r["status"] != "verified"]
     print(json.dumps({"all_verified": not bad, "results": results}, ensure_ascii=False))
     return 2 if bad else 0

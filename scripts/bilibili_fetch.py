@@ -71,6 +71,7 @@ def fetch_one(raw_bvid: str, cookies: dict, a) -> dict | None:
         return None
     d = v["data"]
     aid, cid = d["aid"], d["cid"]
+    pages = len(d.get("pages") or []) or 1
 
     segs, note = get_subtitles(bvid, cid, aid, cookies)
     dm: list[dict] = []
@@ -80,7 +81,7 @@ def fetch_one(raw_bvid: str, cookies: dict, a) -> dict | None:
                                                       cookies=cookies))
     except RuntimeError as e:
         dm_note = str(e)
-    return {
+    pack = {
         "video": {
             "bvid": bvid, "aid": aid, "cid": cid,
             "title": d.get("title"),
@@ -88,6 +89,7 @@ def fetch_one(raw_bvid: str, cookies: dict, a) -> dict | None:
             "owner_mid": (d.get("owner") or {}).get("mid"),
             "pubdate": d.get("pubdate"),
             "duration_s": d.get("duration"),
+            "pages": pages,
             "view": (d.get("stat") or {}).get("view"),
             "danmaku_count": (d.get("stat") or {}).get("danmaku"),
             "url": f"https://www.bilibili.com/video/{bvid}",
@@ -97,6 +99,9 @@ def fetch_one(raw_bvid: str, cookies: dict, a) -> dict | None:
                     "bursts_30s": bili_lib.danmaku_bursts(dm, top=a.bursts)},
         "comments": get_comments(aid, cookies, a.comments),
     }
+    if pages > 1:  # 分P教学只抓了第一P，提示归纳时别漏后半段
+        pack["note"] = f"该视频共 {pages}P，本素材包仅覆盖第1P；归纳时注明或按需抓取其余分P"
+    return pack
 
 
 def main(argv=None) -> int:
@@ -104,30 +109,46 @@ def main(argv=None) -> int:
     ap.add_argument("bvid", nargs="+", help="BV 号或完整视频链接（可多个）")
     ap.add_argument("--comments", type=int, default=15)
     ap.add_argument("--bursts", type=int, default=8)
-    ap.add_argument("--out", default=None)
+    ap.add_argument("--out", default=None,
+                    help="结果落盘路径；缺省写到 <技能根>/.cache/，传 - 则把完整 JSON 打到 stdout")
     a = ap.parse_args(argv)
 
     apilib.stdout_utf8()
     cookies = bili_lib.load_cookies()
 
     packs: list[dict] = []
+    failed: list[str] = []
     for raw in a.bvid:
         pack = fetch_one(raw, cookies, a)
-        if pack is None:
-            return 1
-        packs.append(pack)
+        if pack is None:  # 单个失效（被删/风控）不拖垮整批，动作管线一次抓 3–5 个
+            failed.append(raw)
+        else:
+            packs.append(pack)
+    if not packs:
+        return 1
 
     result = packs[0] if len(packs) == 1 else {"videos": packs}
-    if a.out:
-        pathlib.Path(a.out).write_text(
-            json.dumps(result, ensure_ascii=False, indent=2), "utf-8")
-        print(json.dumps({"code": 0, "written": a.out, "videos": len(packs),
-                          "titles": [p["video"]["title"] for p in packs],
-                          "danmaku_total": sum(p["danmaku"]["fetched"] for p in packs),
-                          "comments_total": sum(len(p["comments"]) for p in packs)},
-                         ensure_ascii=False))
-    else:
+    if failed:
+        result = {**result,
+                  "failed": failed,
+                  "note": f"{len(failed)} 个视频抓取失败（被删/失效/风控），其余已正常抓取"}
+
+    if a.out == "-":  # 显式要求全文走 stdout
         print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    if a.out is None:  # 默认落盘，避免整包字幕/弹幕灌爆上下文
+        cache_dir = bili_lib.ROOT / ".cache"
+        cache_dir.mkdir(exist_ok=True)
+        stem = "_".join(b.strip("/").split("/")[-1] for b in a.bvid)[:80]
+        a.out = str(cache_dir / f"素材包_{stem}.json")
+    pathlib.Path(a.out).write_text(
+        json.dumps(result, ensure_ascii=False, indent=2), "utf-8")
+    print(json.dumps({"code": 0, "written": a.out, "videos": len(packs),
+                      "failed": failed,
+                      "titles": [p["video"]["title"] for p in packs],
+                      "danmaku_total": sum(p["danmaku"]["fetched"] for p in packs),
+                      "comments_total": sum(len(p["comments"]) for p in packs)},
+                     ensure_ascii=False))
     return 0
 
 

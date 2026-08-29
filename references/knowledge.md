@@ -6,13 +6,19 @@
 - **OpenAlex** `api.openalex.org` — 引文数、撤稿标记（is_retracted，接 Retraction Watch）
 - **Crossref** `api.crossref.org` — DOI 存在性兜底验证
 
-本机 PubMed E-utilities 被 DNS 污染，**禁止使用**。
+> **三源精度差异**：OpenAlex 的 `search` 是相关性匹配，**不吃布尔算符**——同一个布尔式，
+> Europe PMC/Crossref 精确命中、OpenAlex 只当普通关键词跑偏。需要精确布尔过滤时以
+> Europe PMC 结果为准，OpenAlex/Crossref 用来补充引文数与撤稿信息。
+
+本机网络下 PubMed E-utilities 不可用（校园网 DNS 拦截），**禁止使用**。
 
 ## 快答档（默认）
 
 > 下文 `$S` = `<技能根>/scripts/socrates.py`（统一命令行入口）。
 
-1. 把问题翻译成英文检索式（同义词 OR 连接，如 `protein supplementation OR protein intake` AND `muscle hypertrophy OR muscle mass`）。
+1. 把问题翻译成英文检索式。**OR 必须用括号括死**，否则 AND 优先级会让检索面整个跑偏：
+   写 `(protein supplementation OR protein intake) AND (muscle hypertrophy OR muscle mass)`，
+   不要写 `A OR B AND C OR D`。
 2. `python "$S" paper "<检索式>" --max 8`
 3. 挑 3–5 篇：优先级 Meta分析/系统综述 > RCT > 前瞻队列；>10 年的经典结论可用但注明年份；同结论取证据等级高的。
 4. 读摘要（输出的 abstract 字段）。
@@ -27,6 +33,8 @@
 2. 对 top 2–3 篇有 PMCID 的，`python "$S" paper --fulltext PMCID --out 全文.txt` 读全文：看方法学（样本量、时长、对照设置）、剂量/频率细节、人群适用性。
 3. 用 OpenAlex 引文数判断影响面；被引高的争议论文要提反面研究。
 4. 写 wiki 条目（`wiki/_知识条目模板.md`），文件名用问题主题（如 `蛋白粉与增肌.md`）。
+   **写入前先按关键词扫一遍 `wiki/*.md`（文件名+主题行）**：同一问题换个问法也算同一条目，
+   命中近似条目就在原条目追加"更新记录"并刷新引用，不要新建重复条目。
 5. 输出正文，末尾告知已沉淀条目。
 
 ## 输出格式（快答）

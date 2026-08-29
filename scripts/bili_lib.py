@@ -51,7 +51,8 @@ def has_sessdata(cookies: dict) -> bool:
 def fresh_identity() -> dict:
     """铸造全新匿名身份：buvid3/4（finger/spi）+ b_nut（主站下发）。
 
-    风控挑战（data 只有 v_voucher）后换新身份重试用；成功则落盘。
+    风控挑战（data 只有 v_voucher）后换新身份重试用。返回值=已落盘的合并结果
+    （新匿名身份 + 原有登录态），确保重试时不丢 SESSDATA。
     """
     fresh: dict = {}
     try:
@@ -70,9 +71,12 @@ def fresh_identity() -> dict:
                     fresh.setdefault(k.strip(), v.strip())
     except Exception:  # noqa: BLE001
         pass
+    # 合并落盘：只刷新匿名身份字段，绝不能覆盖掉已存的 SESSDATA 等登录态
+    merged = load_cookies()
+    merged.update(fresh)
     if fresh.get("buvid3"):
-        save_cookies(fresh)
-    return fresh
+        save_cookies(merged)
+    return merged
 
 
 def ensure_buvid(cookies: dict) -> dict:
