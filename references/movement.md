@@ -20,9 +20,12 @@
 
 1. **登录检查**：`credentials/bilibili.json` 不存在 → 先跑 `python "$S" bili-login`，
    让用户用B站APP扫码（AI字幕必需登录态；未登录搜索与元数据仍可用，仅字幕缺失）。
-2. **检索**：`python "$S" bili-search "<动作名> 教学" --limit 20`；
+2. **检索**：`python "$S" bili-search "<动作名> 教学" --limit 20`——
+   白名单UP已由脚本**自动置顶**并标注 `whitelist: true`（creators.json 驱动，无需人工重排）；
    可再跑一次 `"<动作名> 教程"` 合并去重。
-3. **重排**：白名单UP置顶 → 按播放量与弹幕/收藏活跃度 → 剔除明显低质
+3. **挑选**：脚本已按 白名单→原相关性 排好序，直接采用；若 `whitelist_count` 为 0
+   （白名单UP没做过这个动作），可对白名单UP定向补一轮 `--author <名字>`，仍没有就
+   如实说明"白名单暂无该动作内容"，按播放/互动质量采用其余结果。剔除明显低质
    （合集切片、纯混剪、时长 <3 分钟、无字幕且弹幕极少）。
 4. **选 3–5 个**（白名单有结果则至少含 1 个），一次抓齐：
    `python "$S" bili-fetch BVxxx BVyyy BVzzz --out 临时素材包.json`。

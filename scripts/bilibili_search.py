@@ -22,6 +22,26 @@ import apilib  # noqa: E402
 import bili_lib  # noqa: E402
 
 API = "https://api.bilibili.com/x/web-interface/wbi/search/type"
+CONFIG = pathlib.Path(__file__).resolve().parent.parent / "config" / "creators.json"
+
+
+def load_whitelist() -> tuple[set, set]:
+    """读 UP主白名单（config/creators.json），返回 (名字集合, B站uid集合)。
+
+    配置缺失/损坏时静默降级为空集——搜索照常工作，只是没有置顶。
+    """
+    try:
+        cfg = json.loads(CONFIG.read_text("utf-8"))
+    except Exception:  # noqa: BLE001
+        return set(), set()
+    names, uids = set(), set()
+    for p in cfg.get("preferred", []):
+        if p.get("name"):
+            names.add(str(p["name"]).lower())
+        uid = (p.get("uid") or {}).get("bilibili")
+        if isinstance(uid, int):
+            uids.add(uid)
+    return names, uids
 
 
 def main(argv=None) -> int:
@@ -69,20 +89,34 @@ def main(argv=None) -> int:
                     "或等待几分钟后降低频率重试。view/弹幕/评论接口不受影响，可先抓已知 BV 号。"}))
         return 1
 
+    rows = (j.get("data") or {}).get("result") or []
+    # "剥壳"降级检测：B站反爬有时返回只有标题、剥掉作者/mid 的行——白名单和重排都废掉。
+    # 表现为全部行无 author/uname，处理：换新身份重试一次，拿不回就用残缺行如实输出。
+    if rows and not any(r.get("author") or r.get("uname") for r in rows):
+        time.sleep(5)
+        cookies = bili_lib.fresh_identity()
+        try:
+            j2 = do_search(cookies)
+            if j2.get("code") == 0 and not bili_lib.is_risk_challenged(j2):
+                rows = (j2.get("data") or {}).get("result") or rows
+        except Exception:  # noqa: BLE001 - 重试失败就用原始降级行
+            pass
+
+    names, wuids = load_whitelist()
     results = []
-    for r in (j.get("data") or {}).get("result") or []:
+    for r in rows:
         if r.get("type") != "video":
             continue
-        author = r.get("author") or ""
-        if a.author and a.author.lower() not in author.lower():
-            continue
+        author = r.get("author") or r.get("uname") or ""
+        mid = r.get("mid") or r.get("uid")
         pubdate = r.get("pubdate")
         results.append({
             "bvid": r.get("bvid"),
             "aid": r.get("aid"),
             "title": re.sub(r"<.*?>", "", r.get("title") or ""),
             "author": author,
-            "mid": r.get("mid"),
+            "mid": mid,
+            "whitelist": author.lower() in names or mid in wuids,
             "play": r.get("play"),
             "danmaku": r.get("video_review"),
             "favorites": r.get("favorites"),
@@ -91,10 +125,19 @@ def main(argv=None) -> int:
             "desc": (r.get("description") or "")[:120],
             "url": f"https://www.bilibili.com/video/{r.get('bvid')}",
         })
-        if len(results) >= a.limit:
-            break
+
+    if a.author:  # 定向检索：只保留 UP主名包含该子串的结果
+        results = [r for r in results if a.author.lower() in r["author"].lower()]
+
+    # 白名单置顶：稳定排序，两组内部保持B站原相关性顺序
+    results.sort(key=lambda x: not x["whitelist"])
+    results = results[:a.limit]
+
     print(json.dumps({"code": 0, "query": a.keyword,
-                      "count": len(results), "results": results},
+                      "count": len(results),
+                      "whitelist_count": sum(1 for r in results if r["whitelist"]),
+                      "whitelist_ups": sorted({r["author"] for r in results if r["whitelist"]}),
+                      "results": results},
                      ensure_ascii=False))
     return 0
 

@@ -55,7 +55,7 @@ python "$S" paper "protein intake hypertrophy" --max 8          # ② 三源文�
 python "$S" paper --fulltext PMC1234567 --out 全文缓存.txt       #    深挖档读全文
 python "$S" verify <DOI或PMID>...                               # ③ 引用硬校验（exit 2 = 有问题，必须中断）
 python "$S" bili-login                                          # ④ B站扫码登录（首次一次）
-python "$S" bili-search "深蹲 教学" --author 凯圣王 --limit 20    # ⑤ B站搜索（支持 --author 过滤白名单UP）
+python "$S" bili-search "深蹲 教学" --author 凯圣王 --limit 20    # ⑤ B站搜索（白名单UP自动置顶；--author 定向检索某个UP）
 python "$S" bili-fetch BV1xxx BV2yyy                            # ⑥ 抓素材包（可多个BV；默认落盘 .cache/ 只回摘要，--out - 才打印全文）
 python "$S" douyin check                                        # ⑦ 抖音登录态；to-playwright OUT / from-playwright SRC 同理
 ```
@@ -66,8 +66,10 @@ python "$S" douyin check                                        # ⑦ 抖音登�
 ## UP主白名单
 
 `config/creators.json`：当前偏好 **凯圣王、谭成义**，其余待定（用户后续补充）。
-视频结果按"白名单优先 → 播放/互动质量"重排；白名单**不排他**，优质内容照收并标注来源。
-搜索命中白名单作者时，把其 uid 回填进 creators.json（防重名误配）。
+**置顶是代码行为，不是口头要求**：bilibili_search 会读取该文件，自动把白名单UP排到最前
+并标注 `whitelist: true`（按 uid 或名字匹配），摘要里还有 `whitelist_count` / `whitelist_ups`。
+白名单**不排他**，优质内容照收并标注来源；搜索命中白名单作者时，把其 uid 回填进
+creators.json（防重名误配）。
 
 ## 一次性初始化（各做一次，之后免维护）
 
